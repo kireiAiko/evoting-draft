@@ -1,22 +1,20 @@
 <?php
-	include 'includes/session.php';
+include 'includes/session.php';
 
-	if(isset($_POST['edit'])){
-		$id = $_POST['id'];
-		$description = $_POST['description'];
+if(isset($_POST['edit'])){
+    $id = $_POST['id'];
+    $description = $_POST['description'];
+    $max_elected = $_POST['max_elected'];
 
-		$sql = "UPDATE positions SET description = '$description' WHERE id = '$id'";
-		if($conn->query($sql)){
-			$_SESSION['success'] = 'Position updated successfully';
-		}
-		else{
-			$_SESSION['error'] = $conn->error;
-		}
-	}
-	else{
-		$_SESSION['error'] = 'Fill up edit form first';
-	}
+    $sql = "UPDATE positions SET description = '$description', max_elected = '$max_elected' WHERE id = '$id'";
+    if($conn->query($sql)){
+        $_SESSION['success'] = 'Position updated successfully';
+    } else {
+        $_SESSION['error'] = $conn->error;
+    }
+} else {
+    $_SESSION['error'] = 'Fill up edit form first';
+}
 
-	header('location: positions.php');
-
+header('location: positions.php');
 ?>

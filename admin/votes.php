@@ -23,7 +23,8 @@
               <button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;</button>
               <h4><i class='icon fa fa-warning'></i> Error!</h4>
               ".$_SESSION['error']."
-            </div>";
+            </div>
+          ";
           unset($_SESSION['error']);
         }
         if(isset($_SESSION['success'])){
@@ -32,7 +33,8 @@
               <button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;</button>
               <h4><i class='icon fa fa-check'></i> Success!</h4>
               ".$_SESSION['success']."
-            </div>";
+            </div>
+          ";
           unset($_SESSION['success']);
         }
       ?>
@@ -44,8 +46,8 @@
               <div class="row">
                 <div class="col-md-6">
                   <button type="button" class="btn btn-success btn-sm btn-flat" data-toggle="modal" data-target="#saveconfirm">
-                      <i class="fa fa-save"></i> Save
-                         </button>
+                    <i class="fa fa-save"></i> Save
+                  </button>
 
                   <a href="../admin/saved_votes.php" class="btn btn-primary btn-sm btn-flat">
                     <i class="fa fa-folder-open"></i> View Saved Votes
@@ -105,6 +107,34 @@
   </div>
 
   <?php include 'includes/footer.php'; ?>
+
+  <!-- Reset Votes Modal -->
+  <div class="modal fade" id="reset">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="POST" action="votes_reset.php">
+          <div class="modal-header">
+            <h4 class="modal-title">Reset Votes</h4>
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to reset all votes?</p>
+            <p>This will:</p>
+            <ul>
+              <li>Delete all votes</li>
+              <li>Reset all students’ vote status to “not voted”</li>
+              <li>Clear all ballot images in the ballots folder</li>
+            </ul>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-danger">Yes, Reset</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <?php include 'includes/votes_modal.php'; ?>
   <?php include 'includes/config_modal.php'; ?>
 </div>

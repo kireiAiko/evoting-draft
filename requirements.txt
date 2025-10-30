@@ -1,7 +1,0 @@
-Flask
-numpy
-opencv-python
-pandas
-mysql-connector-python
-requests
-watchdog

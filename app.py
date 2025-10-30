@@ -8,19 +8,11 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
 # MySQL connection config 
-#db_config = {
-#    'host': 'localhost',
-#    'user': 'root',
-#    'password': '',
-#    'database': 'votesystem'
-#}
-
 db_config = {
-    'host': 'yamabiko.proxy.rlwy.net',
+    'host': 'localhost',
     'user': 'root',
-    'password': 'fYuOFyNFqUWxxvFweOdOpnEnuAVDvGmz',
-    'database': 'railway',
-    'port': 57607
+    'password': '',
+    'database': 'votesystem'
 }
 
 
@@ -68,6 +60,3 @@ def start_voting():
         return render_template('vote_summary.html', student_id=student_id, results=results)
 
     return render_template('start-voting.html')
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)

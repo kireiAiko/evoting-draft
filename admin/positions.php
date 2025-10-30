@@ -49,6 +49,7 @@
                 <thead>
                   <th class="hidden"></th>
                   <th>Position</th>
+                  <th>Max Elected</th>
                   <th>Tools</th>
                 </thead>
                 <tbody>
@@ -60,6 +61,7 @@
                         <tr>
                           <td class='hidden'></td>
                           <td>".$row['description']."</td>
+                          <td>".$row['max_elected']."</td>
                           <td>
                             <button class='btn btn-success btn-sm edit btn-flat' data-id='".$row['id']."'><i class='fa fa-edit'></i> Edit</button>
                             <button class='btn btn-danger btn-sm delete btn-flat' data-id='".$row['id']."'><i class='fa fa-trash'></i> Delete</button>
@@ -96,7 +98,6 @@ $(function(){
     var id = $(this).data('id');
     getRow(id);
   });
-
 });
 
 function getRow(id){
@@ -108,7 +109,7 @@ function getRow(id){
     success: function(response){
       $('.id').val(response.id);
       $('#edit_description').val(response.description);
-      $('.description').html(response.description); // Removed max_vote reference
+      $('#edit_max_elected').val(response.max_elected);
     }
   });
 }

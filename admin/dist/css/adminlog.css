@@ -44,9 +44,11 @@ body {
 }
 
 .login-left h1 {
-  font-size: 26px;
+  width: 85%;
+  font-size: 24px;
   font-weight: 600;
   text-align: center;
+  line-height: 1.2;
 }
 
 /* Right side - form */
@@ -60,7 +62,7 @@ body {
 }
 .login-right form {
   width: 100%;
-  max-width: 320px;  /* keeps form compact */
+  max-width: 300px;  /* keeps form compact */
 }
 
 .login-right h2 {
@@ -111,24 +113,27 @@ input:focus {
 }
 
 button {
-  width: 100%;                 
+  width: 100%;
   padding: 12px;
-  margin-top: 12px;
-  background: #22303f;
+  margin-top: 15px;
+  margin-left: 13px;
+  background: linear-gradient(135deg, #22303f, #2f4052);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 button:hover {
-  background: #1b2c3b;
+  background: linear-gradient(135deg, #1b2c3b, #263646);
   transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
 }
+
 
 
 /* Error message */

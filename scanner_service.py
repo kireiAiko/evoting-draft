@@ -1,195 +1,194 @@
-"""
-scanner_service.py – Test mode (improved)
-• Expects image {studentID}.jpg/.png in /ballots
-• Detects marks, detects overvotes / blank ballots and returns JSON.
-Run: python scanner_service.py
-"""
-import os
 from flask import Flask, request, jsonify
-import cv2
+import os, shutil, datetime, traceback
+import scanner_ocr_detect
 import mysql.connector
-from datetime import datetime
-
-# ---------- CONFIG -------------------------------------------------
-DB = dict(host='127.0.0.1', user='root', password='', database='votesystem')
-BALLOT_DIR = 'ballots'
-IMG_EXTS   = ('.jpg', '.jpeg', '.png', '.tif')
-# tweak this if your scanner is noisy (0.10 -> 0.15 etc)
-MIN_DARK_FOR_MARK = 0.12
-# -------------------------------------------------------------------
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
-# ---------- BBOXES (keep as you have) ------------------------------
-BBOXES = {
-    8: {   # PRESIDENT
-        23: (74, 294, 35, 35),
-        24: (74, 331, 35, 35),
-        25: (76, 356, 35, 35),
-    },
-    9: {   # VICE PRESIDENT
-        26: (71, 423, 35, 35),
-        27: (71, 456, 35, 35),
-    },
-    11: {  # SECRETARY
-        28: (76, 520, 35, 35),
-        29: (74, 556, 35, 35),
-        30: (71, 587, 35, 35),
-        31: (74, 620, 35, 35),
-    },
-    12: {  # TREASURER
-        32: (74, 689, 35, 35),
-        33: (74, 720, 35, 35),
-        34: (74, 758, 35, 35),
-    },
-    13: {  # PIO
-        37: (76, 820, 35, 35),
-        38: (76, 854, 35, 35),
-        39: (76, 887, 35, 35),
-    },
-    14: {  # AUDITOR
-        40: (78, 951, 35, 35),
-        41: (74, 985, 35, 35),
-        42: (74, 1018, 35, 35),
-    }
+BALLOT_DIR = "C:/xampp/htdocs/voting-practice/ballots"
+DB_CONFIG = {
+    'host': '127.0.0.1',
+    'user': 'root',
+    'password': '',
+    'database': 'votesystem'
 }
-# ------------------------------------------------------------------
 
-def find_image(student_id):
-    for ext in IMG_EXTS:
-        path = os.path.join(BALLOT_DIR, f'{student_id}{ext}')
-        if os.path.isfile(path):
-            return path
-    return None
-
-def detect_marks(img, min_dark=MIN_DARK_FOR_MARK):
-    """
-    Returns (votes, overvotes, details)
-      - votes: list of dicts {'position_id', 'candidate_id'}
-      - overvotes: list of dicts {'position_id', 'candidates': [cand_ids], 'ratios': [...]}
-      - details: per-position per-candidate dark ratios (for debugging)
-    """
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (3,3), 0)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    # remove small speckles
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-
-    votes = []
-    overvotes = []
-    details = {}
-
-    h_img, w_img = thresh.shape
-
-    for pos_id, candidates in BBOXES.items():
-        marked = []
-        details[pos_id] = {}
-        for cand_id, (x, y, w, h) in candidates.items():
-            # crop ROI safely
-            x1 = max(0, x)
-            y1 = max(0, y)
-            x2 = min(w_img, x + w)
-            y2 = min(h_img, y + h)
-            roi = thresh[y1:y2, x1:x2]
-
-            if roi.size == 0:
-                dark_ratio = 0.0
-            else:
-                dark_ratio = cv2.countNonZero(roi) / float(w * h)
-
-            details[pos_id][cand_id] = round(dark_ratio, 3)
-            if dark_ratio >= min_dark:
-                marked.append((cand_id, dark_ratio))
-
-        if len(marked) == 1:
-            votes.append({'position_id': pos_id, 'candidate_id': marked[0][0]})
-        elif len(marked) > 1:
-            # overvote: list candidate ids and their ratios (for debugging)
-            marked_sorted = sorted(marked, key=lambda x: x[1], reverse=True)
-            overvotes.append({
-                'position_id': pos_id,
-                'candidates': [m[0] for m in marked_sorted],
-                'ratios': [round(m[1],3) for m in marked_sorted]
-            })
-        # else: no mark for this position
-
-    # print diagnostics to terminal to help debug
-    print("\n--- detect_marks results ---")
-    for pid, d in details.items():
-        print(f"Position {pid}: ", d)
-    print("votes:", votes)
-    print("overvotes:", overvotes)
-    print("---------------------------\n")
-
-    return votes, overvotes, details
-
-@app.route('/scan')
-def scan_route():
-    sid = request.args.get('sid', '').strip()
-    if not sid:
-        return jsonify(status='ERROR', error='sid missing'), 400
-
-    img_path = find_image(sid)
-    if not img_path:
-        return jsonify(status='ERROR', error='Image not found in ballots folder'), 404
-
+# --------------------- DATABASE OPERATIONS ---------------------
+def insert_vote(student_id, position_name, candidate_name):
+    conn = None
     try:
-        img = cv2.imread(img_path)
-        if img is None:
-            return jsonify(status='ERROR', error='Image load failed'), 400
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
 
-        votes, overvotes, details = detect_marks(img)
+        # Split candidate name into first and last name
+        parts = candidate_name.strip().rsplit(' ', 1)
+        if len(parts) < 2:
+            print(f"[WARN] Candidate name not in 'First Last' format: {candidate_name}")
+            return False
+        first, last = parts[0], parts[1]
 
-        if overvotes:
-            return jsonify(
-                status='ERROR',
-                error='Overvote detected',
-                overvotes=overvotes,
-                details=details
-            ), 400
+        # Find candidate
+        cursor.execute("SELECT id FROM candidates WHERE UPPER(firstname)=%s AND UPPER(lastname)=%s",
+                       (first.upper(), last.upper()))
+        res = cursor.fetchone()
+        if not res:
+            print(f"[ERROR] Candidate not found: {candidate_name}")
+            return False
+        candidate_id = res[0]
 
-        if not votes:
-            return jsonify(status='ERROR', error='Blank ballot detected', details=details), 400
+        # Find position
+        cursor.execute("SELECT id FROM positions WHERE UPPER(description)=%s", (position_name.upper(),))
+        res = cursor.fetchone()
+        if not res:
+            print(f"[ERROR] Position not found: {position_name}")
+            return False
+        position_id = res[0]
 
-    except Exception as e:
-        return jsonify(status='ERROR', error=str(e)), 500
+        # Prevent duplicate votes for same position
+        cursor.execute("SELECT id FROM votes WHERE student_id=%s AND position_id=%s", (student_id, position_id))
+        if cursor.fetchone():
+            print(f"[INFO] Duplicate vote ignored for student {student_id}, position {position_name}")
+            return False
 
-    # ---- insert votes and return summary
-    try:
-        conn = mysql.connector.connect(**DB)
-        cur  = conn.cursor()
-
-        for v in votes:
-            cur.execute("""INSERT INTO votes
-                           (student_id, position_id, candidate_id, voted_at)
-                           VALUES (%s,%s,%s,%s)""",
-                        (sid, v['position_id'], v['candidate_id'],
-                         datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-        cur.execute("UPDATE studlog SET vote_status='voted' WHERE studentID=%s", (sid,))
-
-        cur.execute("""SELECT p.description,
-                              CONCAT(c.lastname, ', ', c.firstname)
-                       FROM votes v
-                       JOIN positions  p ON p.id = v.position_id
-                       JOIN candidates c ON c.id = v.candidate_id
-                       WHERE v.student_id=%s""", (sid,))
-        summary = [{'position': r[0], 'candidate': r[1]} for r in cur.fetchall()]
-
+        voted_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            INSERT INTO votes (student_id, candidate_id, position_id, voted_at)
+            VALUES (%s, %s, %s, %s)
+        """, (student_id, candidate_id, position_id, voted_at))
         conn.commit()
+        return True
 
     except Exception as e:
-        return jsonify(status='ERROR', error='DB error: ' + str(e)), 500
-    finally:
-        try:
-            cur.close()
-            conn.close()
-        except:
-            pass
+        print(f"[ERROR] insert_vote failed: {e}")
+        traceback.print_exc()
+        return False
 
-    return jsonify(status='OK', summary=summary, image=os.path.basename(img_path))
-# ------------------------------------------------------------------
-if __name__ == '__main__':
-    os.makedirs(BALLOT_DIR, exist_ok=True)
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    finally:
+        if conn:
+            conn.close()
+
+# --------------------- BALLOT VALIDATION ---------------------
+def validate_ballot(votes):
+    """
+    votes = {position: [candidates]}
+    Returns: (valid: bool, reason: str)
+    """
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("SELECT description, max_elected FROM positions")
+        positions_db = cursor.fetchall()
+
+        total_votes = sum(len(v) if isinstance(v, list) else 1 for v in votes.values())
+        if total_votes == 0:
+            return False, "Invalid ballot: No votes detected. Please try again."
+
+        for pos_name, max_elected in positions_db:
+            voted_candidates = votes.get(pos_name, [])
+            if not isinstance(voted_candidates, list):
+                voted_candidates = [voted_candidates]
+
+            if not voted_candidates:
+                continue  # allow missing sections
+
+            if len(voted_candidates) > max_elected:
+                return False, f"Invalid ballot: Overvote detected for {pos_name}. Please review marks."
+
+        return True, ""
+
+    except Exception as e:
+        print(f"[ERROR] validate_ballot failed: {e}")
+        traceback.print_exc()
+        return False, f"Validation error: {e}"
+
+    finally:
+        if conn:
+            conn.close()
+
+
+# --------------------- MAIN ENDPOINT ---------------------
+@app.route('/scan', methods=['POST'])
+def scan_ballot():
+    data = request.get_json(force=True)
+    image_name = data.get("image_name")
+    student_id = data.get("student_id")
+
+    if not image_name or not student_id:
+        return jsonify({"error": "Missing image_name or student_id"}), 400
+
+    image_path = os.path.join(BALLOT_DIR, image_name)
+    if not os.path.exists(image_path):
+        return jsonify({"error": f"Image not found: {image_name}"}), 404
+
+    new_name = f"{student_id}.jpg"
+    new_path = os.path.join(BALLOT_DIR, new_name)
+    if image_name != new_name:
+        shutil.move(image_path, new_path)
+        image_path = new_path
+
+    try:
+        try:
+            votes = scanner_ocr_detect.analyze_ballot(image_path)
+            print(f"[INFO] OCR Result: {votes}")
+        except ValueError as e:
+            # Pass through detailed OCR errors
+            err_msg = str(e)
+            print(f"[❌ INVALID BALLOT] {err_msg}")
+            return jsonify({
+                "status": "INVALID",
+                "student_id": student_id,
+                "error": err_msg,
+                "votes_detected": 0,
+                "votes_inserted": 0,
+                "summary": []
+            }), 200
+
+        # Normalize votes
+        for k, v in list(votes.items()):
+            if not isinstance(v, list):
+                votes[k] = [v]
+
+        valid, reason = validate_ballot(votes)
+        if not valid:
+            print(f"[INVALID] {reason}")
+            return jsonify({
+                "status": "INVALID",
+                "student_id": student_id,
+                "error": reason,
+                "votes_detected": sum(len(v) for v in votes.values()),
+                "votes_inserted": 0,
+                "summary": []
+            }), 200
+
+        # Insert votes
+        inserted = 0
+        for position, candidates in votes.items():
+            for c in candidates:
+                if insert_vote(student_id, position, c):
+                    inserted += 1
+
+        print(f"[✅ OK] Inserted {inserted} votes for student {student_id}")
+
+        return jsonify({
+            "status": "OK",
+            "student_id": student_id,
+            "votes_detected": sum(len(v) for v in votes.values()),
+            "votes_inserted": inserted,
+            "summary": [
+                {"position": p, "candidate": c} for p, candidates in votes.items() for c in candidates
+            ]
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] Ballot processing failed: {e}")
+        traceback.print_exc()
+        return jsonify({
+            "status": "ERROR",
+            "student_id": student_id,
+            "details": str(e)
+        }), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)

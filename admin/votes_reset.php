@@ -1,10 +1,13 @@
 <?php
-  include 'includes/session.php';
+include 'includes/session.php';
 
-  // Start transaction
-  $conn->begin_transaction();
+// Path to ballots folder
+$ballots_folder = "C:/xampp/htdocs/voting-practice/ballots";
 
-  try {
+// Start transaction
+$conn->begin_transaction();
+
+try {
     // Step 1: Delete all votes
     $sql = "DELETE FROM votes";
     $conn->query($sql);
@@ -13,15 +16,24 @@
     $reset_status_sql = "UPDATE studlog SET vote_status = 'not voted'";
     $conn->query($reset_status_sql);
 
-    // Commit the transaction
+    // Step 3: Clear all files in ballots folder
+    $files = glob($ballots_folder . "/*"); // get all file names
+    foreach($files as $file){
+        if(is_file($file)){
+            unlink($file); // delete file
+        }
+    }
+
+    // Commit transaction
     $conn->commit();
 
-    $_SESSION['success'] = "Votes reset successfully and student voting status restored to 'not voted'";
-  } catch (Exception $e) {
+    $_SESSION['success'] = "Votes reset successfully, student voting status restored, and ballots folder cleared.";
+} catch (Exception $e) {
     // Rollback on failure
     $conn->rollback();
     $_SESSION['error'] = "Something went wrong while resetting: " . $e->getMessage();
-  }
+}
 
-  header('location: votes.php');
+header('location: votes.php');
+exit();
 ?>

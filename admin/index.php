@@ -8,7 +8,7 @@
 <html lang="en">
 <head>
     <title>OCC Centralized Online Voting System</title>
-    <link rel="stylesheet" href="dist/css/adminlog.css?v=1.1">
+   <link rel="stylesheet" href="dist/css/adminlog.css?v=<?php echo filemtime('dist/css/adminlog.css'); ?>">
 </head>
 <body>
 
@@ -16,7 +16,7 @@
     <!-- Left Side (Logo + Branding) -->
     <div class="login-left">
         <img src="images/occ_logo.png" alt="OCC Logo">
-        <h1>OCC Centralized Online Voting System</h1>
+        <h1>One Cainta College Electronic Voting System</h1>
     </div>
 
     <!-- Right Side (Login Form) -->
@@ -29,8 +29,7 @@
             <div class="form">
                 <input type="password" name="password" placeholder="Password" required>
             </div>
-            <button type="submit" name="login">
-                <i class="fa fa-sign-in"></i> Login
+            <button type="submit" name="login"> Login
             </button>
         </form>
 

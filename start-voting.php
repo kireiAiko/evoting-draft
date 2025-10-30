@@ -1,7 +1,4 @@
 <?php
-/* -------------------------------------------------------------------
- *  START VOTING  – checks the student ID and vote status
- * ------------------------------------------------------------------*/
 session_start();
 
 /* Database credentials */
@@ -13,15 +10,10 @@ define('DB_NAME', 'votesystem');
 $errors      = [];
 $studentID   = '';
 
-/* ------------------ handle form POST ------------------ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    /* grab & trim input */
     $studentID = trim($_POST['studentID'] ?? '');
-
-    /* pattern: 2022-02811  (hyphen optional) */
     if (!preg_match('/^\d{4}-?\d{5}$/', $studentID)) {
-        $errors[] = 'Student ID must be in the form YYYY-##### (e.g. 2022‑02811).';
+        $errors[] = 'Student ID must be in the form YYYY-##### (e.g. 2022-02811).';
     }
 
     if (!$errors) {
@@ -29,19 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($mysqli->connect_errno) {
             $errors[] = 'Database connection failed: ' . $mysqli->connect_error;
         } else {
-            $stmt = $mysqli->prepare(
-                "SELECT vote_status FROM studlog WHERE studentID = ? LIMIT 1"
-            );
+            $stmt = $mysqli->prepare("SELECT vote_status FROM studlog WHERE studentID = ? LIMIT 1");
             $stmt->bind_param('s', $studentID);
             $stmt->execute();
             $res  = $stmt->get_result();
-
             if ($row = $res->fetch_assoc()) {
-
                 if ($row['vote_status'] === 'voted') {
                     $errors[] = 'This student has already voted.';
                 }
-
             } else {
                 $errors[] = 'Student is not currently enrolled.';
             }
@@ -49,9 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    /* If no errors –> go to scan page */
     if (!$errors) {
-        $_SESSION['student_id'] = $studentID;     // store for next page
+        $_SESSION['student_id'] = $studentID;
         header('Location: scan.php');
         exit;
     }
@@ -62,17 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <title>Start Voting</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-   body {
+body {
   font-family: 'Montserrat', Arial, Helvetica, sans-serif;
-  background: linear-gradient(to bottom, #e0f7fa, #00bcd4);
+  background: linear-gradient(135deg, #2c2c6e, #00bcd4);
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
   margin: 0;
+  position: relative;
 }
-
 .card {
   background: #ffffff;
   padding: 50px 60px;
@@ -81,14 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   width: 450px;
   text-align: center;
 }
-
 .card h2 {
   font-size: 1.8rem;
   font-weight: 800;
   color: #2c2c6e;
   margin-bottom: 5px;
 }
-
 .card p {
   font-size: 0.85rem;
   color: #666;
@@ -112,16 +97,10 @@ input[type="text"] {
   outline: none;
   transition: all 0.3s ease;
 }
-
-input[type="text"]::placeholder {
-  color: #999;
-}
-
 input[type="text"]:focus {
   background: #fff;
   box-shadow: 0 0 6px rgba(0, 188, 212, 0.4);
 }
-
 button {
   width: 100%;
   padding: 15px;
@@ -135,13 +114,11 @@ button {
   text-transform: uppercase;
   transition: all 0.3s ease;
 }
-
 button:hover {
   background: #0097a7;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
-
 .errors {
   background: #fdecea;
   color: #b71c1c;
@@ -151,12 +128,30 @@ button:hover {
   font-size: 14px;
   text-align: left;
 }
-
+/* Back Button */
+.back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: white;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+.back-btn:hover { color: #e0f7fa; }
 </style>
 </head>
 <body>
+
+<!-- Back Button -->
+<a href="index.php" class="back-btn" title="Back">
+  <i class="fa-solid fa-arrow-left"></i>
+</a>
+
 <div class="card">
-    <h2>Enter Your Student ID</h2>
+    <h2>Enter Your Student ID</h2>
     <p>For Verification</p>
     <?php if ($errors): ?>
       <div class="errors">
@@ -165,9 +160,7 @@ button:hover {
     <?php endif; ?>
 
     <form method="post">
-        <input type="text" name="studentID"
-               placeholder="e.g. 2022‑02811"
-               value="<?= htmlspecialchars($studentID) ?>" required>
+        <input type="text" name="studentID" placeholder="e.g. 2022-02811" value="<?= htmlspecialchars($studentID) ?>" required>
         <button type="submit">Proceed</button>
     </form>
 </div>

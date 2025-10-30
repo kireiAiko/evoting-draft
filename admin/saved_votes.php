@@ -1,5 +1,138 @@
 <?php include 'includes/session.php'; ?>
 <?php include 'includes/header.php'; ?>
+<style>
+/* ==== Saved Votes Redesign (Clean, Flat, Professional) ==== */
+.content-header h1 {
+  font-weight: 700;
+  color: #1e2d3b;
+}
+
+.box.box-primary {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 25px;
+}
+
+.box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 18px 22px;
+  border-bottom: 1px solid #d8e0e8;
+  border-radius: 10px 10px 0 0;
+}
+
+.box-header h3 {
+  font-size: 18px;
+  color: #1c2733;
+  margin: 0;
+  font-weight: 600;
+}
+
+.box-header small {
+  color: #6b7a89;
+  font-size: 13px;
+}
+
+.box-tools form {
+  display: inline-block;
+}
+
+.box-body {
+  padding: 20px;
+  background: #fff;
+  border-radius: 0 0 10px 10px;
+}
+
+/* === Table Styling === */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.table thead.bg-info th {
+  background: #e9f2fb !important;
+  color: #1a2a3a;
+  font-weight: 600;
+  font-size: 15px;
+  text-transform: uppercase;
+  border-top: 2px solid #3b82f6;
+}
+
+.table th, .table td {
+  padding: 10px 14px;
+  border: 1px solid #e1e6eb;
+}
+
+.table tbody tr:nth-child(even) {
+  background: #f9fbfd;
+}
+
+.table tbody tr:hover {
+  background: #f1f6fa;
+}
+
+.table th:first-child, .table td:first-child {
+  border-left: none;
+}
+
+.table th:last-child, .table td:last-child {
+  border-right: none;
+}
+
+.winner-row {
+  background-color: #d1e7dd !important; 
+  font-weight: 600;
+}
+
+.winner-row td {
+  border-top: 2px solid #198754 !important; 
+  border-bottom: 2px solid #198754 !important;
+  color: #0f5132;
+}
+
+/* === Buttons === */
+.btn {
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.btn-success {
+  background: #2ea44f;
+  border: none;
+}
+
+.btn-success:hover {
+  background: #278a42;
+}
+
+.btn-danger {
+  background: #d73a49;
+  border: none;
+}
+
+.btn-danger:hover {
+  background: #b92c3a;
+}
+
+.btn-default {
+  background: #e9ecef;
+  border: none;
+  color: #333;
+}
+
+.btn-default:hover {
+  background: #d6d9dc;
+}
+</style>
+
 <body class="hold-transition skin-blue sidebar-mini">
 <div class="wrapper">
 
@@ -16,7 +149,7 @@
     </section>
 
     <!-- Back Button -->
-    <div style="margin: 15px 0;">
+    <div style="margin: 15px 0; padding: 10px 15px;">
       <a href="votes.php" class="btn btn-default btn-flat">
         <i class="fa fa-arrow-left"></i> Back to Votes
       </a>
@@ -106,23 +239,34 @@ while ($batch = $batch_q->fetch_assoc()):
   $res = $stmt->get_result();
 
   $current_pos = '';
-  echo "<div class='table-responsive'><table class='table table-bordered'>";
-  while ($row = $res->fetch_assoc()) {
-    if ($current_pos != $row['position_name']) {
-      if ($current_pos != '') echo "</tbody>";
-      $current_pos = $row['position_name'];
-      echo "<thead class='bg-info'>";
-      echo "<tr><th colspan='2'>".htmlspecialchars($current_pos)."</th></tr>";
-      echo "<tr><th style='width:65%'>Candidate</th><th style='width:35%'>Total Votes</th></tr>";
-      echo "</thead><tbody>";
-    }
-    echo "<tr>
-            <td>".htmlspecialchars($row['lastname'].', '.$row['firstname'])."</td>
-            <td>".intval($row['total_votes'])."</td>
-          </tr>";
+$first_in_pos = true; // track top candidate per position
+echo "<div class='table-responsive'><table class='table table-bordered'>";
+
+while ($row = $res->fetch_assoc()) {
+  // New position group?
+  if ($current_pos != $row['position_name']) {
+    if ($current_pos != '') echo "</tbody>"; // close previous section
+    $current_pos = $row['position_name'];
+    echo "<thead class='bg-info'>";
+    echo "<tr><th colspan='2' style='font-size: 20px; font-weight: 800;'>".htmlspecialchars($current_pos)."</th></tr>";
+    echo "<tr><th style='width:65%'>Candidate</th><th style='width:35%'>Total Votes</th></tr>";
+    echo "</thead><tbody>";
+    $first_in_pos = true; // reset for new position
   }
-  if ($current_pos != '') echo "</tbody>";
-  echo "</table></div>";
+
+  // highlight top candidate (first row in each position)
+  $row_class = $first_in_pos ? "winner-row" : "";
+  $first_in_pos = false; // next rows won’t be top
+
+  echo "<tr class='{$row_class}'>
+          <td>".htmlspecialchars($row['lastname'].', '.$row['firstname'])."</td>
+          <td>".intval($row['total_votes'])."</td>
+        </tr>";
+}
+
+if ($current_pos != '') echo "</tbody>";
+echo "</table></div>";
+
 ?>
         </div>
       </div>

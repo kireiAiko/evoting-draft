@@ -22,15 +22,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Yatra+One&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="logowbg">
+  <!--
+<div class="logowbg">
     <div class="logofo">
       <img src="static/occ_logo.png" class="logo" />
     </div>
-  </div>
+  </div> -->
 
   <header class="index-home">
     <div class="bg-head">
       <img class="bgimage" src="static/occ.png" />
+      <img src="static/occ_logo.png" class="logo" />
       <div class="home-content">
         <h1 class="election-title"><?php echo htmlspecialchars($title); ?></h1>
         <div class="buto">
